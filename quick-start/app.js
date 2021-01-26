@@ -15,6 +15,7 @@
  * 1. Deploy this code to a server running Node.js
  * 2. Run `yarn install`
  * 3. Add your VERIFY_TOKEN and PAGE_ACCESS_TOKEN to your environment vars
+ * 4. Optional add your PORT to environment vars
  */
 
 'use strict';
@@ -112,9 +113,33 @@ function handleMessage(senderPsid, receivedMessage) {
   if (receivedMessage.text) {
     // Create the payload for a basic text message, which
     // will be added to the body of your request to the Send API
-    response = {
-      'text': `You sent the message: '${receivedMessage.text}'. Now send me an attachment!`
-    };
+
+    if (receivedMessage.text.toLowerCase().includes('what is your name')) {
+
+      // Code taken from: https://github.com/howdyai/botkit/issues/544#issuecomment-266265049
+      const usersPublicProfile = 'https://graph.facebook.com/v2.6/' + senderPsid + '?fields=first_name,last_name&access_token=' + process.env.PAGE_ACCESS_TOKEN;
+      request({
+          url: usersPublicProfile,
+          json: true // parse
+      }, function (error, response, body) {
+        if (!error && response.statusCode === 200) {
+          response = {
+            'text': `Hi ${body.first_name}, Good day! My name is the awesome test bot!`
+          };
+          callSendAPI(senderPsid, response);
+        }
+        else {
+          console.error(`Problem getting user's name. URL: ${usersPublicProfile}`)
+          callSendAPI(senderPsid, {response:'There was a a problem,'});
+        }
+      });
+      return;
+
+    } else {
+      response = {
+        'text': `You sent the message: '${receivedMessage.text}'. Now send me an attachment!`
+      };
+    }
   } else if (receivedMessage.attachments) {
 
     // Get the URL of the message attachment
